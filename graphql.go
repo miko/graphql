@@ -397,19 +397,29 @@ func (c *Client) SubscriptionClient(ctx context.Context, header http.Header, con
 		return nil, err
 	}
 
-	err = conn.ReadJSON(&msg)
-	if err != nil {
-		return nil, err
-	}
+	for err == nil {
+		err = conn.ReadJSON(&msg)
 
-	if msg.Type != gql_connection_ack {
+		if msg.Type == gql_connection_ack {
+			break
+		}
+
+		if msg.Type == gql_connection_keep_alive {
+			continue
+		}
+
 		conn.Close()
+
 		if msg.Type == gql_connection_error {
 			errJ, _ := json.Marshal(*msg.Payload)
 			return nil, errors.New(string(errJ))
 		} else {
 			return nil, errors.New("server-did-not-acknowledge")
 		}
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	go subClient.subWork()
