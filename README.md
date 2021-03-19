@@ -1,6 +1,6 @@
 # graphql [![GoDoc](https://godoc.org/github.com/cusspvz/graphql?status.png)](http://godoc.org/github.com/cusspvz/graphql) [![Build Status](https://travis-ci.org/cusspvz/graphql.svg?branch=master)](https://travis-ci.org/cusspvz/graphql) [![Go Report Card](https://goreportcard.com/badge/github.com/cusspvz/graphql)](https://goreportcard.com/report/github.com/cusspvz/graphql)
 
-Low-level GraphQL client for Go, forked from https://github.com/machinebox/graphql/
+Low-level GraphQL client for Go, forked from https://github.com/cusspvz/graphql/
 
 ## Features
 
@@ -14,7 +14,7 @@ Low-level GraphQL client for Go, forked from https://github.com/machinebox/graph
 
 ## Next Features
 * Subscription connection handling
-* 
+* Usage Documentation and examples
 
 ## Installation
 Make sure you have a working Go environment. To install graphql, simply run:
