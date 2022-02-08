@@ -20,7 +20,7 @@ func TestDoJSON(t *testing.T) {
 		is.Equal(r.Method, http.MethodPost)
 		b, err := ioutil.ReadAll(r.Body)
 		is.NoErr(err)
-		is.Equal(string(b), `{"query":"query {}","variables":null}`+"\n")
+		is.Equal(string(b), `{"query":"query empty {}","variables":null,"operationName":"empty"}`+"\n")
 		io.WriteString(w, `{
 			"data": {
 				"something": "yes"
@@ -35,7 +35,7 @@ func TestDoJSON(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	err := client.Run(ctx, &Request{q: "query empty {}"}, &responseData)
 	is.NoErr(err)
 	is.Equal(calls, 1) // calls
 	is.Equal(responseData["something"], "yes")

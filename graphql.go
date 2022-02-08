@@ -66,7 +66,7 @@ type Client struct {
 type OperationRequest struct {
 	Query         string                 `json:"query"`
 	Variables     map[string]interface{} `json:"variables"`
-	Context       map[string]interface{} `json:"context"`
+	Context       map[string]interface{} `json:"context,omitempty"`
 	OperationName string                 `json:"operationName,omitempty"`
 }
 
@@ -297,9 +297,12 @@ func NewRequest(q string) *Request {
 
 // OperationName parses operation name from query.
 func (req *Request) OperationName() string {
-	pattern := regexp.MustCompile(`(mutation|query)\s*(.*?)\(`)
-	operation := pattern.FindStringSubmatch(req.Query())[2]
-
+	pattern := regexp.MustCompile(`(mutation|query)\s*([^\s\({]*?)\s*[\({]`)
+	match := pattern.FindStringSubmatch(req.Query())
+	operation := "unnamed"
+	if len(match) > 1 {
+		operation = match[2]
+	}
 	return operation
 }
 
