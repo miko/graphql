@@ -39,7 +39,7 @@ func TestSub(t *testing.T) {
 			Variables map[string]string `json:"variables"`
 		}
 		is.NoErr(json.Unmarshal(*pl.Payload, &tmp1))
-		is.Equal(tmp1.Query, `subscription ($q: String) { cnt }`)
+		is.Equal(tmp1.Query, `subscription SampleSub ($q: String) { cnt }`)
 		is.Equal(len(tmp1.Variables), 1)
 		is.Equal(tmp1.Variables["q"], "foo")
 		is.Equal(*pl.Id, "0")
@@ -78,7 +78,7 @@ func TestSub(t *testing.T) {
 
 	vars := make(map[string]interface{})
 	vars["q"] = "foo"
-	sub, err := cl.Subscribe(&Request{Header: header, q: `subscription ($q: String) { cnt }`, vars: vars})
+	sub, err := cl.Subscribe(&Request{Header: header, q: `subscription SampleSub ($q: String) { cnt }`, vars: vars})
 	is.NoErr(err)
 	res := <-sub
 	is.Equal(string(*res.Data), `{"data":"bar"}`)

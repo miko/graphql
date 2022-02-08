@@ -297,7 +297,7 @@ func NewRequest(q string) *Request {
 
 // OperationName parses operation name from query.
 func (req *Request) OperationName() string {
-	pattern := regexp.MustCompile(`(mutation|query)\s*([^\s\({]*?)\s*[\({]`)
+	pattern := regexp.MustCompile(`(mutation|query|subscription)\s*([^\s\({]+?)\s*[\({]`)
 	match := pattern.FindStringSubmatch(req.Query())
 	operation := "unnamed"
 	if len(match) > 1 {
@@ -513,8 +513,9 @@ func (c *SubscriptionClient) Subscribe(req *Request) (Subscription, error) {
 
 	var requestBody bytes.Buffer
 	requestBodyObj := OperationRequest{
-		Query:     req.q,
-		Variables: req.vars,
+		Query:         req.q,
+		Variables:     req.vars,
+		OperationName: req.OperationName(),
 	}
 	if err := json.NewEncoder(&requestBody).Encode(requestBodyObj); err != nil {
 		return nil, errors.Wrap(err, "encode body")
