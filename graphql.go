@@ -39,6 +39,7 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -63,9 +64,10 @@ type Client struct {
 }
 
 type OperationRequest struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables"`
-	Context   map[string]interface{} `json:"context"`
+	Query         string                 `json:"query"`
+	Variables     map[string]interface{} `json:"variables"`
+	Context       map[string]interface{} `json:"context"`
+	OperationName string                 `json:"operationName,omitempty"`
 }
 
 type ConnectionParams map[string]interface{}
@@ -112,8 +114,9 @@ func (c *Client) Run(ctx context.Context, req *Request, resp interface{}) error 
 func (c *Client) runWithJSON(ctx context.Context, req *Request, resp interface{}) error {
 	var requestBody bytes.Buffer
 	requestBodyObj := OperationRequest{
-		Query:     req.q,
-		Variables: req.vars,
+		Query:         req.q,
+		Variables:     req.vars,
+		OperationName: req.OperationName(),
 	}
 	if err := json.NewEncoder(&requestBody).Encode(requestBodyObj); err != nil {
 		return errors.Wrap(err, "encode body")
@@ -290,6 +293,14 @@ func NewRequest(q string) *Request {
 		Header: make(map[string][]string),
 	}
 	return req
+}
+
+// OperationName parses operation name from query.
+func (req *Request) OperationName() string {
+	pattern := regexp.MustCompile(`(mutation|query)\s*(.*?)\(`)
+	operation := pattern.FindStringSubmatch(req.Query())[2]
+
+	return operation
 }
 
 // Var sets a variable.
