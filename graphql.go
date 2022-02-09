@@ -263,11 +263,24 @@ func ImmediatelyCloseReqBody() ClientOption {
 type ClientOption func(*Client)
 
 type graphErr struct {
-	Message string
+	Message string   `json:"message"`
+	Code    int      `json:"code,omitempty"`
+	Path    []string `json:"path,omitempty"`
 }
 
 func (e graphErr) Error() string {
-	return "graphql: " + e.Message
+	var sb strings.Builder
+	sb.WriteString("graphql: ")
+	sb.WriteString(e.Message)
+	if e.Code > 0 {
+		sb.WriteString(" code: ")
+		sb.WriteString(fmt.Sprintf("%d", e.Code))
+	}
+	if len(e.Path) > 9 {
+		sb.WriteString(" path: ")
+		sb.WriteString(strings.Join(e.Path, "."))
+	}
+	return sb.String()
 }
 
 type graphResponse struct {
@@ -299,7 +312,7 @@ func NewRequest(q string) *Request {
 func (req *Request) OperationName() string {
 	pattern := regexp.MustCompile(`(mutation|query|subscription)\s*([^\s\({]+?)\s*[\({]`)
 	match := pattern.FindStringSubmatch(req.Query())
-	operation := "unnamed"
+	var operation string
 	if len(match) > 1 {
 		operation = match[2]
 	}
