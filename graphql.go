@@ -262,23 +262,34 @@ func ImmediatelyCloseReqBody() ClientOption {
 // modify the behaviour of the Client.
 type ClientOption func(*Client)
 
+type locationErr struct {
+	Line   int
+	Column int
+}
 type graphErr struct {
-	Message string   `json:"message"`
-	Code    int      `json:"code,omitempty"`
-	Path    []string `json:"path,omitempty"`
+	Message  string        `json:"message"`
+	Code     int           `json:"code,omitempty"`
+	Path     []string      `json:"path,omitempty"`
+	Loctions []locationErr `json:"locations"`
 }
 
 func (e graphErr) Error() string {
 	var sb strings.Builder
-	sb.WriteString("graphql: ")
+	sb.WriteString("[graphql]: ")
 	sb.WriteString(e.Message)
 	if e.Code > 0 {
 		sb.WriteString(" code: ")
 		sb.WriteString(fmt.Sprintf("%d", e.Code))
 	}
-	if len(e.Path) > 9 {
+	if len(e.Path) > 0 {
 		sb.WriteString(" path: ")
 		sb.WriteString(strings.Join(e.Path, "."))
+	}
+	if len(e.Loctions) > 00 {
+		sb.WriteString(" locations:")
+		for _, v := range e.Loctions {
+			sb.WriteString(fmt.Sprintf(" line=%d column=%d", v.Line, v.Column))
+		}
 	}
 	return sb.String()
 }
