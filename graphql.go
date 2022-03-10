@@ -263,14 +263,14 @@ func ImmediatelyCloseReqBody() ClientOption {
 type ClientOption func(*Client)
 
 type locationErr struct {
-	Line   int
-	Column int
+	Line   int `json:"line,omitempty"`
+	Column int `json:"column,omitempty"`
 }
 type graphErr struct {
-	Message  string        `json:"message"`
+	Message  string        `json:"message,omitempty"`
 	Code     int           `json:"code,omitempty"`
 	Path     []string      `json:"path,omitempty"`
-	Loctions []locationErr `json:"locations"`
+	Loctions []locationErr `json:"locations,omitempty"`
 }
 
 func (e graphErr) Error() string {
