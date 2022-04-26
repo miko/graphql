@@ -57,6 +57,12 @@ type Client struct {
 	// closeReq will close the request body immediately allowing for reuse of client
 	closeReq bool
 
+	//lastStatus keeps last response HTTP status code
+	LastStatus int
+
+	//lastBody keeps last response body
+	LastBody []byte
+
 	// Log is called with various debug information.
 	// To log to standard out, use:
 	//  client.Log = func(s string) { log.Println(s) }
@@ -105,6 +111,8 @@ func (c *Client) Run(ctx context.Context, req *Request, resp interface{}) error 
 	if len(req.files) > 0 && !c.useMultipartForm {
 		return errors.New("cannot send files with PostFields option")
 	}
+	c.LastStatus = 0
+	c.LastBody = nil
 	if c.useMultipartForm {
 		return c.runWithPostFields(ctx, req, resp)
 	}
@@ -150,6 +158,8 @@ func (c *Client) runWithJSON(ctx context.Context, req *Request, resp interface{}
 		return errors.Wrap(err, "reading body")
 	}
 	c.logf("<< %s", buf.String())
+	c.LastStatus = res.StatusCode
+	c.LastBody = buf.Bytes()
 	if err := json.NewDecoder(&buf).Decode(&gr); err != nil {
 		if res.StatusCode != http.StatusOK {
 			return fmt.Errorf("graphql: server returned a non-200 status code: %v", res.StatusCode)
@@ -221,6 +231,8 @@ func (c *Client) runWithPostFields(ctx context.Context, req *Request, resp inter
 		return errors.Wrap(err, "reading body")
 	}
 	c.logf("<< %s", buf.String())
+	c.LastStatus = res.StatusCode
+	c.LastBody = buf.Bytes()
 	if err := json.NewDecoder(&buf).Decode(&gr); err != nil {
 		if res.StatusCode != http.StatusOK {
 			return fmt.Errorf("graphql: server returned a non-200 status code: %v", res.StatusCode)
