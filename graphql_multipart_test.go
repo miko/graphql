@@ -30,7 +30,7 @@ func TestWithClient(t *testing.T) {
 	client := NewClient("", WithHTTPClient(testClient), UseMultipartForm())
 
 	req := NewRequest(``)
-	client.Run(ctx, req, nil)
+	client.Run(ctx, req, nil, nil)
 
 	is.Equal(calls, 1) // calls
 }
@@ -57,10 +57,12 @@ func TestDoUseMultipartForm(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	var gqlerrors GraphqlErrors
+	err := client.Run(ctx, &Request{q: "query {}"}, &responseData, &gqlerrors)
 	is.NoErr(err)
 	is.Equal(calls, 1) // calls
 	is.Equal(responseData["something"], "yes")
+	is.Equal(gqlerrors, nil)
 }
 func TestImmediatelyCloseReqBody(t *testing.T) {
 	is := is.New(t)
@@ -84,10 +86,12 @@ func TestImmediatelyCloseReqBody(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	var gqlerrors GraphqlErrors
+	err := client.Run(ctx, &Request{q: "query {}"}, &responseData, &gqlerrors)
 	is.NoErr(err)
 	is.Equal(calls, 1) // calls
 	is.Equal(responseData["something"], "yes")
+	is.Equal(gqlerrors, nil)
 }
 
 func TestDoErr(t *testing.T) {
@@ -112,9 +116,11 @@ func TestDoErr(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	var gqlerrors GraphqlErrors
+	err := client.Run(ctx, &Request{q: "query {}"}, &responseData, &gqlerrors)
 	is.True(err != nil)
-	is.Equal(err.Error(), "graphql: Something went wrong")
+	is.Equal(err.Error(), "[graphql]: Something went wrong")
+	is.Equal(gqlerrors, nil)
 }
 
 func TestDoServerErr(t *testing.T) {
@@ -136,8 +142,10 @@ func TestDoServerErr(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
+	var gqlerrors GraphqlErrors
+	err := client.Run(ctx, &Request{q: "query {}"}, &responseData, &gqlerrors)
 	is.Equal(err.Error(), "graphql: server returned a non-200 status code: 500")
+	is.Equal(gqlerrors, nil)
 }
 
 func TestDoBadRequestErr(t *testing.T) {
@@ -163,8 +171,10 @@ func TestDoBadRequestErr(t *testing.T) {
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
 	var responseData map[string]interface{}
-	err := client.Run(ctx, &Request{q: "query {}"}, &responseData)
-	is.Equal(err.Error(), "graphql: miscellaneous message as to why the the request was bad")
+	var gqlerrors GraphqlErrors
+	err := client.Run(ctx, &Request{q: "query {}"}, &responseData, &gqlerrors)
+	is.Equal(err.Error(), "[graphql]: miscellaneous message as to why the the request was bad")
+	is.Equal(gqlerrors, nil)
 }
 
 func TestDoNoResponse(t *testing.T) {
@@ -188,7 +198,7 @@ func TestDoNoResponse(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
 	defer cancel()
-	err := client.Run(ctx, &Request{q: "query {}"}, nil)
+	err := client.Run(ctx, &Request{q: "query {}"}, nil, nil)
 	is.NoErr(err)
 	is.Equal(calls, 1) // calls
 }
@@ -221,11 +231,13 @@ func TestQuery(t *testing.T) {
 	var resp struct {
 		Value string
 	}
-	err := client.Run(ctx, req, &resp)
+	var gqlerrors GraphqlErrors
+	err := client.Run(ctx, req, &resp, &gqlerrors)
 	is.NoErr(err)
 	is.Equal(calls, 1)
 
 	is.Equal(resp.Value, "some data")
+	is.Equal(gqlerrors, nil)
 
 }
 
@@ -254,7 +266,7 @@ func TestFile(t *testing.T) {
 	f := strings.NewReader(`This is a file`)
 	req := NewRequest("query {}")
 	req.File("file", "filename.txt", f)
-	err := client.Run(ctx, req, nil)
+	err := client.Run(ctx, req, nil, nil)
 	is.NoErr(err)
 }
 

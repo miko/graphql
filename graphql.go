@@ -1,33 +1,34 @@
 // Package graphql provides a low level GraphQL client.
 //
-//  // create a client (safe to share across requests)
-//  client := graphql.NewClient("https://machinebox.io/graphql")
+//	// create a client (safe to share across requests)
+//	client := graphql.NewClient("https://machinebox.io/graphql")
 //
-//  // make a request
-//  req := graphql.NewRequest(`
-//      query ($key: String!) {
-//          items (id:$key) {
-//              field1
-//              field2
-//              field3
-//          }
-//      }
-//  `)
+//	// make a request
+//	req := graphql.NewRequest(`
+//	    query ($key: String!) {
+//	        items (id:$key) {
+//	            field1
+//	            field2
+//	            field3
+//	        }
+//	    }
+//	`)
 //
-//  // set any variables
-//  req.Var("key", "value")
+//	// set any variables
+//	req.Var("key", "value")
 //
-//  // run it and capture the response
-//  var respData ResponseStruct
-//  if err := client.Run(ctx, req, &respData); err != nil {
-//      log.Fatal(err)
-//  }
+//	// run it and capture the response
+//	var respData ResponseStruct
+//	if err := client.Run(ctx, req, &respData); err != nil {
+//	    log.Fatal(err)
+//	}
 //
-// Specify client
+// # Specify client
 //
 // To specify your own http.Client, use the WithHTTPClient option:
-//  httpclient := &http.Client{}
-//  client := graphql.NewClient("https://machinebox.io/graphql", graphql.WithHTTPClient(httpclient))
+//
+//	httpclient := &http.Client{}
+//	client := graphql.NewClient("https://machinebox.io/graphql", graphql.WithHTTPClient(httpclient))
 package graphql
 
 import (
@@ -102,7 +103,7 @@ func (c *Client) logf(format string, args ...interface{}) {
 // Pass in a nil response object to skip response parsing.
 // If the request fails or the server returns an error, the first error
 // will be returned.
-func (c *Client) Run(ctx context.Context, req *Request, resp interface{}) error {
+func (c *Client) Run(ctx context.Context, req *Request, resp interface{}, gqlerrors *GraphqlErrors) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -114,12 +115,12 @@ func (c *Client) Run(ctx context.Context, req *Request, resp interface{}) error 
 	c.LastStatus = 0
 	c.LastBody = nil
 	if c.useMultipartForm {
-		return c.runWithPostFields(ctx, req, resp)
+		return c.runWithPostFields(ctx, req, resp, gqlerrors)
 	}
-	return c.runWithJSON(ctx, req, resp)
+	return c.runWithJSON(ctx, req, resp, gqlerrors)
 }
 
-func (c *Client) runWithJSON(ctx context.Context, req *Request, resp interface{}) error {
+func (c *Client) runWithJSON(ctx context.Context, req *Request, resp interface{}, gqlerrors *GraphqlErrors) error {
 	var requestBody bytes.Buffer
 	requestBodyObj := OperationRequest{
 		Query:         req.q,
@@ -132,7 +133,8 @@ func (c *Client) runWithJSON(ctx context.Context, req *Request, resp interface{}
 	c.logf(">> variables: %v", req.vars)
 	c.logf(">> query: %s", req.q)
 	gr := &graphResponse{
-		Data: resp,
+		Data:   resp,
+		Errors: *gqlerrors,
 	}
 	r, err := http.NewRequest(http.MethodPost, c.endpoint, &requestBody)
 	if err != nil {
@@ -173,7 +175,7 @@ func (c *Client) runWithJSON(ctx context.Context, req *Request, resp interface{}
 	return nil
 }
 
-func (c *Client) runWithPostFields(ctx context.Context, req *Request, resp interface{}) error {
+func (c *Client) runWithPostFields(ctx context.Context, req *Request, resp interface{}, gqlerrors *GraphqlErrors) error {
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
 	if err := writer.WriteField("query", req.q); err != nil {
@@ -206,6 +208,10 @@ func (c *Client) runWithPostFields(ctx context.Context, req *Request, resp inter
 	c.logf(">> query: %s", req.q)
 	gr := &graphResponse{
 		Data: resp,
+		//		Errors: *gqlerrors,
+	}
+	if gqlerrors != nil {
+		gr.Errors = *gqlerrors
 	}
 	r, err := http.NewRequest(http.MethodPost, c.endpoint, &requestBody)
 	if err != nil {
@@ -248,7 +254,8 @@ func (c *Client) runWithPostFields(ctx context.Context, req *Request, resp inter
 
 // WithHTTPClient specifies the underlying http.Client to use when
 // making requests.
-//  NewClient(endpoint, WithHTTPClient(specificHTTPClient))
+//
+//	NewClient(endpoint, WithHTTPClient(specificHTTPClient))
 func WithHTTPClient(httpclient *http.Client) ClientOption {
 	return func(client *Client) {
 		client.httpClient = httpclient
@@ -263,7 +270,7 @@ func UseMultipartForm() ClientOption {
 	}
 }
 
-//ImmediatelyCloseReqBody will close the req body immediately after each request body is ready
+// ImmediatelyCloseReqBody will close the req body immediately after each request body is ready
 func ImmediatelyCloseReqBody() ClientOption {
 	return func(client *Client) {
 		client.closeReq = true
@@ -279,11 +286,13 @@ type locationErr struct {
 	Column int `json:"column,omitempty"`
 }
 type graphErr struct {
-	Message  string        `json:"message,omitempty"`
-	Code     int           `json:"code,omitempty"`
-	Path     []string      `json:"path,omitempty"`
-	Loctions []locationErr `json:"locations,omitempty"`
+	Message     string                 `json:"message,omitempty"`
+	Code        int                    `json:"code,omitempty"`
+	Path        []string               `json:"path,omitempty"`
+	Locations   []locationErr          `json:"locations,omitempty"`
+	Extenstions map[string]interface{} `json:"extensions,omitempty"`
 }
+type GraphqlErrors []graphErr
 
 func (e graphErr) Error() string {
 	var sb strings.Builder
@@ -297,9 +306,9 @@ func (e graphErr) Error() string {
 		sb.WriteString(" path: ")
 		sb.WriteString(strings.Join(e.Path, "."))
 	}
-	if len(e.Loctions) > 00 {
+	if len(e.Locations) > 0 {
 		sb.WriteString(" locations:")
-		for _, v := range e.Loctions {
+		for _, v := range e.Locations {
 			sb.WriteString(fmt.Sprintf(" line=%d column=%d", v.Line, v.Column))
 		}
 	}
@@ -308,7 +317,7 @@ func (e graphErr) Error() string {
 
 type graphResponse struct {
 	Data   interface{}
-	Errors []graphErr
+	Errors GraphqlErrors
 }
 
 // Request is a GraphQL request.

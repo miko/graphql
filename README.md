@@ -66,7 +66,8 @@ func main() {
 
     // run it and capture the response
     var respData reqStructure
-    if err := client.Run(ctx, req, &respData); err != nil {
+    var graphqlerrors graphql.GraphqlErrors
+    if err := client.Run(ctx, req, &respData, &graphqlerrors); err != nil {
         log.Fatal(err)
     }
 
